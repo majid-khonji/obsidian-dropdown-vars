@@ -1,0 +1,38 @@
+.dvdd {
+  position: relative;
+  display: inline-block;
+  font: inherit;
+}
+
+.dvdd-label {
+  cursor: default;
+  white-space: nowrap;
+  border-bottom: 1px dotted var(--text-muted);
+}
+
+.dvdd-menu {
+  display: none;
+  position: absolute;
+  z-index: 9999;
+  min-width: 160px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: var(--shadow-s);
+  border-radius: 6px;
+  margin-top: 4px;
+  padding: 4px 0;
+}
+
+.dvdd-item {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.dvdd-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.dvdd-item.active::before {
+  content: "✓ ";
+  color: var(--text-accent);
+}
