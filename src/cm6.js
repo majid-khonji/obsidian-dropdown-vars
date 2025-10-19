@@ -1,4 +1,3 @@
-
 const { Decoration, ViewPlugin, WidgetType } = require("@codemirror/view");
 const { RangeSetBuilder } = require("@codemirror/state");
 const {
@@ -38,11 +37,11 @@ class DropdownWidget extends WidgetType {
     const root = document.createElement("span");
     root.className = "dvdd";
 
-    // Live Preview: show inline field format if persistInline is enabled
+    // Live Preview: show 'Status ▾' if persistInline is enabled
     const label = document.createElement("span");
     label.className = "dvdd-label";
     const showInlineFormat = this.plugin.settings.persistInline;
-    label.textContent = showInlineFormat ? `[${this.key}::${current}] ▾` : `${this.key}: ${current} ▾`;
+    label.textContent = showInlineFormat ? `${this.key} ▾` : `${this.key}: ${current} ▾`;
     root.appendChild(label);
 
     const menu = document.createElement("div");
@@ -82,7 +81,7 @@ class DropdownWidget extends WidgetType {
         ev.preventDefault(); ev.stopPropagation();
         await persistSelection(this.plugin, file, this.key, opt);
         const showInlineFormat = this.plugin.settings.persistInline;
-        label.textContent = showInlineFormat ? `[${this.key}::${opt}] ▾` : `${this.key}: ${opt} ▾`;
+        label.textContent = showInlineFormat ? `${this.key} ▾` : `${this.key}: ${opt} ▾`;
         for (const el of menu.querySelectorAll(".dvdd-item")) el.classList.remove("active");
         item.classList.add("active");
         closeMenu();

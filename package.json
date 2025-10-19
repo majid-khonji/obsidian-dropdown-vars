@@ -6,7 +6,10 @@
     "watch": "node build.mjs --watch"
   },
   "devDependencies": {
-    "esbuild": "^0.23.0"
+    "esbuild": "^0.23.1"
+  },
+  "dependencies": {
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.38.6"
   }
 }
-

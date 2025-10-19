@@ -47,16 +47,14 @@ function setFrontmatter(text, key, value) {
 }
 
 function setInlineField(text, key, value) {
-  // Format: place inline field right after the dropdown token on the same line
-  // Pattern: {Key: ...} becomes {Key: ...} Key: (Key::value)
-  const tokenPattern = `\{${escapeRegExp(key)}\s*:[^}]+\}`;
-  const inlinePattern = `${escapeRegExp(key)}: \(${escapeRegExp(key)}::[^)]*\)`;
+  // Always replace or insert a single inline var after each dropdown token
+  // Pattern: {Key: ...}(Key::value)
+  const tokenPattern = `\\{${escapeRegExp(key)}\\s*:[^}]+\\}`;
+  const inlinePattern = `\\(${escapeRegExp(key)}::[^)]*\\)`;
 
-  // Find all occurrences of the token
-  const combinedPattern = new RegExp(`(${tokenPattern})\s*${inlinePattern}?`, "g");
-
-  return text.replace(combinedPattern, (match, token) => {
-    return `${token} ${key}: (${key}::${value})`;
+  // Replace or insert inline var after each token
+  return text.replace(new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g"), (match, token) => {
+    return `${token}(${key}::${value})`;
   });
 }
 
