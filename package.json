@@ -1,9 +1,23 @@
 {
   "name": "dropdown-vars",
   "private": true,
+  "version": "1.1.0",
+  "license": "MIT",
+  "author": "Majid Khonji",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/majid-khonji/obsidian-dropdown-vars.git"
+  },
+  "bugs": {
+    "url": "https://github.com/majid-khonji/obsidian-dropdown-vars/issues"
+  },
+  "homepage": "https://github.com/majid-khonji/obsidian-dropdown-vars#readme",
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch"
+  },
+  "engines": {
+    "node": ">=16"
   },
   "devDependencies": {
     "esbuild": "^0.23.1"

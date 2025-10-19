@@ -34,13 +34,13 @@ class DropdownVarsSettingTab extends PluginSettingTab {
         .onChange(async v => { this.plugin.settings.persistInline = v; await this.plugin.saveSettings(); }));
 
     containerEl.createEl("p", { text: "Syntax: {Key: A | ^B | C} (^ marks default)." });
-    containerEl.createEl("p", { text: "Reading: shows “Key:: value”. Live Edit: shows raw token; hover to pick." });
+      containerEl.createEl("p", { text: "Reading: shows “Key:: value”. Live Edit: shows raw token; click to pick." });
   }
 }
 
 let __dvddOpenMenu = null; // singleton open menu handle
 
-function createHoverDropdown(plugin, sourcePath, key, options, defaultIndex) {
+  function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex) {
   const file = plugin.app.vault.getAbstractFileByPath(sourcePath);
   const fm = file ? getFrontmatter(plugin.app, file) : null;
 
@@ -167,7 +167,7 @@ module.exports = class DropdownVarsPlugin extends Plugin {
           if (!options.length) {
             frag.appendChild(document.createTextNode(m[0]));
           } else {
-            const widget = createHoverDropdown(this, ctx.sourcePath, key, options, defIdx);
+            const widget = createDropdownWidget(this, ctx.sourcePath, key, options, defIdx);
             frag.appendChild(widget);
           }
           last = m.index + m[0].length;
@@ -177,7 +177,7 @@ module.exports = class DropdownVarsPlugin extends Plugin {
       }
     });
 
-    // CM6: Live Preview / Source hover behavior
+  // CM6: Live Preview / Source dropdown behavior
     // @ts-ignore
     this.registerEditorExtension(dropdownView(this));
   }
