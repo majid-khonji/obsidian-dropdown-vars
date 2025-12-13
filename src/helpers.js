@@ -48,13 +48,13 @@ function setFrontmatter(text, key, value) {
 
 function setInlineField(text, key, value) {
   // Always replace or insert a single inline var after each dropdown token
-  // Pattern: {Key: ...}(Key::value)
+  // Pattern: {Key: ...} (Key::value) — space between } and ( for Dataview compatibility
   const tokenPattern = `\\{${escapeRegExp(key)}\\s*:[^}]+\\}`;
   const inlinePattern = `\\(${escapeRegExp(key)}::[^)]*\\)`;
 
-  // Replace or insert inline var after each token
+  // Replace or insert inline var after each token (with a space before the inline field)
   return text.replace(new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g"), (match, token) => {
-    return `${token}(${key}::${value})`;
+    return `${token} (${key}::${value})`;
   });
 }
 

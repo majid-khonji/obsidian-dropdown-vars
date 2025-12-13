@@ -17,7 +17,7 @@ Easily create interactive dropdowns in your notes and optionally sync their valu
    ```
 2. Enable "Persist to inline Dataview" in plugin settings to sync selection:
    ```
-   {Status: Todo | ^In Progress | Done}(Status::In Progress)
+   {Status: Todo | ^In Progress | Done} (Status::In Progress)
    ```
 3. Use Dataview inline queries:
    ```
