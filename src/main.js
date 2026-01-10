@@ -40,7 +40,7 @@ class DropdownVarsSettingTab extends PluginSettingTab {
 
 let __dvddOpenMenu = null; // singleton open menu handle
 
-  function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex) {
+  function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex, occurrenceIndex) {
   const file = plugin.app.vault.getAbstractFileByPath(sourcePath);
   const fm = file ? getFrontmatter(plugin.app, file) : null;
 
@@ -94,7 +94,9 @@ let __dvddOpenMenu = null; // singleton open menu handle
     item.textContent = opt;
     item.addEventListener("mousedown", async (ev) => {
       ev.preventDefault(); ev.stopPropagation();
-      await persistSelection(plugin, file, key, opt);
+      // Find the token position in the raw file by searching for the nth occurrence of this key
+      const tokenPos = await findTokenPositionByOccurrence(plugin.app, file, key, occurrenceIndex);
+      await persistSelection(plugin, file, key, opt, tokenPos);
       const showInlineFormat = plugin.settings.persistInline;
       label.textContent = showInlineFormat ? `[${key}::${opt}] ▾` : `${key}: ${opt} ▾`;
       for (const el of menu.querySelectorAll(".dvdd-item")) el.classList.remove("active");
@@ -105,6 +107,22 @@ let __dvddOpenMenu = null; // singleton open menu handle
   }
   root.appendChild(menu);
   return root;
+}
+
+// Find the position of the nth occurrence of a key's token in the file
+async function findTokenPositionByOccurrence(app, file, key, occurrenceIndex) {
+  if (!file || occurrenceIndex == null) return null;
+  const content = await app.vault.read(file);
+  const re = new RegExp(`\\{${key}\\s*:[^}]+\\}`, "g");
+  let match;
+  let count = 0;
+  while ((match = re.exec(content)) !== null) {
+    if (count === occurrenceIndex) {
+      return match.index;
+    }
+    count++;
+  }
+  return null;
 }
 
 module.exports = class DropdownVarsPlugin extends Plugin {
@@ -155,6 +173,9 @@ module.exports = class DropdownVarsPlugin extends Plugin {
         const text = t.nodeValue;
         let last = 0, m;
         TOKEN_RE.lastIndex = 0;
+        
+        // Track occurrence index per key
+        const keyOccurrence = {};
 
         while ((m = TOKEN_RE.exec(text))) {
           if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
@@ -163,11 +184,15 @@ module.exports = class DropdownVarsPlugin extends Plugin {
           const parsed = splitOptionsWithDefault(m.groups.opts);
           const options = parsed.options;
           const defIdx  = parsed.defaultIndex;
+          
+          // Track which occurrence of this key we're on
+          if (!(key in keyOccurrence)) keyOccurrence[key] = 0;
+          const occurrenceIndex = keyOccurrence[key]++;
 
           if (!options.length) {
             frag.appendChild(document.createTextNode(m[0]));
           } else {
-            const widget = createDropdownWidget(this, ctx.sourcePath, key, options, defIdx);
+            const widget = createDropdownWidget(this, ctx.sourcePath, key, options, defIdx, occurrenceIndex);
             frag.appendChild(widget);
           }
           last = m.index + m[0].length;

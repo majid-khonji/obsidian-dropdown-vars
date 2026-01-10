@@ -46,21 +46,55 @@ function setFrontmatter(text, key, value) {
   return `---\n${body}\n---\n` + text.slice(m[0].length);
 }
 
-function setInlineField(text, key, value) {
-  // Always replace or insert a single inline var after each dropdown token
+function setInlineField(text, key, value, tokenPos = null) {
+  // Replace or insert the inline var after the dropdown token
   // Pattern: {Key: ...} (Key::value) — space between } and ( for Dataview compatibility
   const tokenPattern = `\\{${escapeRegExp(key)}\\s*:[^}]+\\}`;
   const inlinePattern = `\\(${escapeRegExp(key)}::[^)]*\\)`;
+  const re = new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g");
 
-  // Replace or insert inline var after each token (with a space before the inline field)
-  return text.replace(new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g"), (match, token) => {
+  // If tokenPos is provided, only update the token at that position
+  if (tokenPos != null) {
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      if (match.index === tokenPos) {
+        const before = text.slice(0, match.index);
+        const after = text.slice(match.index + match[0].length);
+        return before + match[1] + ` (${key}::${value})` + after;
+      }
+    }
+    // tokenPos not found, return unchanged
+    return text;
+  }
+
+  // Fallback: replace all (legacy behavior)
+  return text.replace(re, (match, token) => {
     return `${token} (${key}::${value})`;
   });
 }
 
 // --- NEW: update the caret in {Key: ...} tokens to mark the selected option ---
-function setCaretForKey(text, key, selected) {
+function setCaretForKey(text, key, selected, tokenPos = null) {
   const tokenRe = new RegExp(`\\{(?<k>${escapeRegExp(key)})\\s*:\\s*(?<opts>[^}]+)\\}`, "g");
+  
+  // If tokenPos is provided, only update the token at that position
+  if (tokenPos != null) {
+    let match;
+    while ((match = tokenRe.exec(text)) !== null) {
+      if (match.index === tokenPos) {
+        const k = match.groups?.k ?? key;
+        const optsRaw = match.groups?.opts ?? "";
+        const { options } = splitOptionsWithDefault(optsRaw);
+        if (!options.length) return text;
+        const rebuilt = `{${k}: ${options.map(o => (String(o) === String(selected) ? "^"+o : o)).join(" | ")}}`;
+        return text.slice(0, match.index) + rebuilt + text.slice(match.index + match[0].length);
+      }
+    }
+    // tokenPos not found, return unchanged
+    return text;
+  }
+
+  // Fallback: replace all (legacy behavior)
   return text.replace(tokenRe, (match, _k, _opts, _off, _s, groups) => {
     const k = groups?.k ?? key;
     const optsRaw = groups?.opts ?? "";
@@ -73,7 +107,7 @@ function setCaretForKey(text, key, selected) {
   });
 }
 
-async function persistSelection(plugin, file, key, value) {
+async function persistSelection(plugin, file, key, value, tokenPos = null) {
   if (!file) return;
   const raw = await readFile(plugin.app, file);
   let out = raw;
@@ -82,9 +116,9 @@ async function persistSelection(plugin, file, key, value) {
   if (persistFrontmatter) out = setFrontmatter(out, key, value);
   
   // always sync caret in tokens for Source mode visibility
-  out = setCaretForKey(out, key, value);
+  out = setCaretForKey(out, key, value, tokenPos);
   
-  if (persistInline) out = setInlineField(out, key, value);
+  if (persistInline) out = setInlineField(out, key, value, tokenPos);
   
   if (out !== raw) await writeFile(plugin.app, file, out);
 }

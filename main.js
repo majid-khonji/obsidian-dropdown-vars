@@ -69,15 +69,41 @@ ${body}
 ---
 ` + text.slice(m[0].length);
     }
-    function setInlineField(text, key, value) {
+    function setInlineField(text, key, value, tokenPos = null) {
       const tokenPattern = `\\{${escapeRegExp(key)}\\s*:[^}]+\\}`;
       const inlinePattern = `\\(${escapeRegExp(key)}::[^)]*\\)`;
-      return text.replace(new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g"), (match, token) => {
+      const re = new RegExp(`(${tokenPattern})(?:\\s*${inlinePattern})?`, "g");
+      if (tokenPos != null) {
+        let match;
+        while ((match = re.exec(text)) !== null) {
+          if (match.index === tokenPos) {
+            const before = text.slice(0, match.index);
+            const after = text.slice(match.index + match[0].length);
+            return before + match[1] + ` (${key}::${value})` + after;
+          }
+        }
+        return text;
+      }
+      return text.replace(re, (match, token) => {
         return `${token} (${key}::${value})`;
       });
     }
-    function setCaretForKey(text, key, selected) {
+    function setCaretForKey(text, key, selected, tokenPos = null) {
       const tokenRe = new RegExp(`\\{(?<k>${escapeRegExp(key)})\\s*:\\s*(?<opts>[^}]+)\\}`, "g");
+      if (tokenPos != null) {
+        let match;
+        while ((match = tokenRe.exec(text)) !== null) {
+          if (match.index === tokenPos) {
+            const k = match.groups?.k ?? key;
+            const optsRaw = match.groups?.opts ?? "";
+            const { options } = splitOptionsWithDefault2(optsRaw);
+            if (!options.length) return text;
+            const rebuilt = `{${k}: ${options.map((o) => String(o) === String(selected) ? "^" + o : o).join(" | ")}}`;
+            return text.slice(0, match.index) + rebuilt + text.slice(match.index + match[0].length);
+          }
+        }
+        return text;
+      }
       return text.replace(tokenRe, (match, _k, _opts, _off, _s, groups) => {
         const k = groups?.k ?? key;
         const optsRaw = groups?.opts ?? "";
@@ -87,14 +113,14 @@ ${body}
         return rebuilt;
       });
     }
-    async function persistSelection2(plugin, file, key, value) {
+    async function persistSelection2(plugin, file, key, value, tokenPos = null) {
       if (!file) return;
       const raw = await readFile(plugin.app, file);
       let out = raw;
       const { persistFrontmatter, persistInline } = plugin.settings || { persistFrontmatter: true, persistInline: false };
       if (persistFrontmatter) out = setFrontmatter(out, key, value);
-      out = setCaretForKey(out, key, value);
-      if (persistInline) out = setInlineField(out, key, value);
+      out = setCaretForKey(out, key, value, tokenPos);
+      if (persistInline) out = setInlineField(out, key, value, tokenPos);
       if (out !== raw) await writeFile(plugin.app, file, out);
     }
     module2.exports = {
@@ -123,13 +149,14 @@ var require_cm6 = __commonJS({
     var TOKEN_RE2 = /\{(?<key>[\w\-]+)\s*:\s*(?<opts>[^}]+)\}/g;
     var __dvddOpenMenu2 = null;
     var DropdownWidget = class extends WidgetType {
-      constructor(plugin, filePath, key, options, defaultIndex) {
+      constructor(plugin, filePath, key, options, defaultIndex, tokenPos) {
         super();
         this.plugin = plugin;
         this.filePath = filePath;
         this.key = key;
         this.options = options;
         this.defaultIndex = defaultIndex;
+        this.tokenPos = tokenPos;
       }
       toDOM(view) {
         const app = this.plugin.app;
@@ -184,7 +211,7 @@ var require_cm6 = __commonJS({
           item.addEventListener("mousedown", async (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            await persistSelection2(this.plugin, file, this.key, opt);
+            await persistSelection2(this.plugin, file, this.key, opt, this.tokenPos);
             const showInlineFormat2 = this.plugin.settings.persistInline;
             label.textContent = showInlineFormat2 ? `${this.key} \u25BE` : `${this.key}: ${opt} \u25BE`;
             for (const el of menu.querySelectorAll(".dvdd-item")) el.classList.remove("active");
@@ -269,7 +296,7 @@ var require_cm6 = __commonJS({
               const { options, defaultIndex } = splitOptionsWithDefault2(m.groups.opts);
               if (!options.length) continue;
               builder.add(idxFrom, idxTo, Decoration.replace({
-                widget: new DropdownWidget(plugin, filePath, key, options, defaultIndex),
+                widget: new DropdownWidget(plugin, filePath, key, options, defaultIndex, idxFrom),
                 inclusive: false
               }));
             }
@@ -318,7 +345,7 @@ var DropdownVarsSettingTab = class extends PluginSettingTab {
   }
 };
 var __dvddOpenMenu = null;
-function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex) {
+function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex, occurrenceIndex) {
   const file = plugin.app.vault.getAbstractFileByPath(sourcePath);
   const fm = file ? getFrontmatter(plugin.app, file) : null;
   let current = fm?.[key];
@@ -367,7 +394,8 @@ function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex) {
     item.addEventListener("mousedown", async (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
-      await persistSelection(plugin, file, key, opt);
+      const tokenPos = await findTokenPositionByOccurrence(plugin.app, file, key, occurrenceIndex);
+      await persistSelection(plugin, file, key, opt, tokenPos);
       const showInlineFormat2 = plugin.settings.persistInline;
       label.textContent = showInlineFormat2 ? `[${key}::${opt}] \u25BE` : `${key}: ${opt} \u25BE`;
       for (const el of menu.querySelectorAll(".dvdd-item")) el.classList.remove("active");
@@ -378,6 +406,20 @@ function createDropdownWidget(plugin, sourcePath, key, options, defaultIndex) {
   }
   root.appendChild(menu);
   return root;
+}
+async function findTokenPositionByOccurrence(app, file, key, occurrenceIndex) {
+  if (!file || occurrenceIndex == null) return null;
+  const content = await app.vault.read(file);
+  const re = new RegExp(`\\{${key}\\s*:[^}]+\\}`, "g");
+  let match;
+  let count = 0;
+  while ((match = re.exec(content)) !== null) {
+    if (count === occurrenceIndex) {
+      return match.index;
+    }
+    count++;
+  }
+  return null;
 }
 module.exports = class DropdownVarsPlugin extends Plugin {
   async onload() {
@@ -414,16 +456,19 @@ module.exports = class DropdownVarsPlugin extends Plugin {
         const text = t.nodeValue;
         let last = 0, m;
         TOKEN_RE.lastIndex = 0;
+        const keyOccurrence = {};
         while (m = TOKEN_RE.exec(text)) {
           if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
           const key = m.groups.key;
           const parsed = splitOptionsWithDefault(m.groups.opts);
           const options = parsed.options;
           const defIdx = parsed.defaultIndex;
+          if (!(key in keyOccurrence)) keyOccurrence[key] = 0;
+          const occurrenceIndex = keyOccurrence[key]++;
           if (!options.length) {
             frag.appendChild(document.createTextNode(m[0]));
           } else {
-            const widget = createDropdownWidget(this, ctx.sourcePath, key, options, defIdx);
+            const widget = createDropdownWidget(this, ctx.sourcePath, key, options, defIdx, occurrenceIndex);
             frag.appendChild(widget);
           }
           last = m.index + m[0].length;

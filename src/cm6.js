@@ -11,13 +11,14 @@ const TOKEN_RE = /\{(?<key>[\w\-]+)\s*:\s*(?<opts>[^}]+)\}/g;
 let __dvddOpenMenu = null; // singleton across widgets
 
 class DropdownWidget extends WidgetType {
-  constructor(plugin, filePath, key, options, defaultIndex) {
+  constructor(plugin, filePath, key, options, defaultIndex, tokenPos) {
     super();
     this.plugin = plugin;
     this.filePath = filePath;
     this.key = key;
     this.options = options;
     this.defaultIndex = defaultIndex;
+    this.tokenPos = tokenPos; // character offset in the document
   }
 
   toDOM(view) {
@@ -79,7 +80,7 @@ class DropdownWidget extends WidgetType {
       item.textContent = opt;
       item.addEventListener("mousedown", async (ev) => {
         ev.preventDefault(); ev.stopPropagation();
-        await persistSelection(this.plugin, file, this.key, opt);
+        await persistSelection(this.plugin, file, this.key, opt, this.tokenPos);
         const showInlineFormat = this.plugin.settings.persistInline;
         label.textContent = showInlineFormat ? `${this.key} ▾` : `${this.key}: ${opt} ▾`;
         for (const el of menu.querySelectorAll(".dvdd-item")) el.classList.remove("active");
@@ -186,7 +187,7 @@ function dropdownView(plugin) {
           if (!options.length) continue;
 
           builder.add(idxFrom, idxTo, Decoration.replace({
-            widget: new DropdownWidget(plugin, filePath, key, options, defaultIndex),
+            widget: new DropdownWidget(plugin, filePath, key, options, defaultIndex, idxFrom),
             inclusive: false
           }));
         }
