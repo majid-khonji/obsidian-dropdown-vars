@@ -9,7 +9,7 @@ const options = {
   platform: "node",
   format: "cjs",
   sourcemap: false,
-  external: ["obsidian", "@codemirror/state", "@codemirror/view"],
+  external: ["obsidian", "@codemirror/state", "@codemirror/view", "@codemirror/language"],
   logLevel: "info",
 };
 

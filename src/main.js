@@ -158,12 +158,25 @@ module.exports = class DropdownVarsPlugin extends Plugin {
 
       this.extractDropdownValues(file);
 
+      // Helper to check if a node is inside a code element
+      const isInsideCodeElement = (node) => {
+        let parent = node.parentElement;
+        while (parent && parent !== root) {
+          const tag = parent.tagName.toLowerCase();
+          if (tag === 'code' || tag === 'pre') return true;
+          parent = parent.parentElement;
+        }
+        return false;
+      };
+
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       const nodes = [];
       let n;
       while ((n = walker.nextNode())) {
         const t = n;
         if (!t.nodeValue) continue;
+        // Skip text nodes inside code blocks
+        if (isInsideCodeElement(t)) continue;
         TOKEN_RE.lastIndex = 0;
         if (TOKEN_RE.test(t.nodeValue)) nodes.push(t);
       }

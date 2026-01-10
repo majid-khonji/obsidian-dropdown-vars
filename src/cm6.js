@@ -1,5 +1,6 @@
 const { Decoration, ViewPlugin, WidgetType } = require("@codemirror/view");
 const { RangeSetBuilder } = require("@codemirror/state");
+const { syntaxTree } = require("@codemirror/language");
 const {
   splitOptionsWithDefault,
   getFrontmatter,
@@ -169,6 +170,22 @@ function dropdownView(plugin) {
       // Get cursor position to hide widgets near cursor
       const cursorPos = this.view.state.selection.main.head;
 
+      // Helper to check if position is inside a code block
+      const isInsideCode = (pos) => {
+        const tree = syntaxTree(this.view.state);
+        let node = tree.resolveInner(pos, 1);
+        while (node) {
+          const name = node.type.name.toLowerCase();
+          if (name.includes('codeblock') || name.includes('fencedcode') || 
+              name.includes('inlinecode') || name === 'code' ||
+              name.includes('hmd-codeblock') || name.includes('formatting-code')) {
+            return true;
+          }
+          node = node.parent;
+        }
+        return false;
+      };
+
       for (const vr of this.view.visibleRanges) {
         const text = doc.sliceString(vr.from, vr.to);
         TOKEN_RE.lastIndex = 0;
@@ -179,6 +196,11 @@ function dropdownView(plugin) {
 
           // Don't render widget if cursor is within or adjacent to the token
           if (cursorPos >= idxFrom && cursorPos <= idxTo) {
+            continue;
+          }
+
+          // Don't render widget if inside a code block or inline code
+          if (isInsideCode(idxFrom)) {
             continue;
           }
 

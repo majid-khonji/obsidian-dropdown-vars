@@ -141,6 +141,7 @@ var require_cm6 = __commonJS({
   "src/cm6.js"(exports2, module2) {
     var { Decoration, ViewPlugin, WidgetType } = require("@codemirror/view");
     var { RangeSetBuilder } = require("@codemirror/state");
+    var { syntaxTree } = require("@codemirror/language");
     var {
       splitOptionsWithDefault: splitOptionsWithDefault2,
       getFrontmatter: getFrontmatter2,
@@ -282,6 +283,18 @@ var require_cm6 = __commonJS({
           const doc = this.view.state.doc;
           const filePath = plugin.app.workspace.getActiveFile()?.path ?? "";
           const cursorPos = this.view.state.selection.main.head;
+          const isInsideCode = (pos) => {
+            const tree = syntaxTree(this.view.state);
+            let node = tree.resolveInner(pos, 1);
+            while (node) {
+              const name = node.type.name.toLowerCase();
+              if (name.includes("codeblock") || name.includes("fencedcode") || name.includes("inlinecode") || name === "code" || name.includes("hmd-codeblock") || name.includes("formatting-code")) {
+                return true;
+              }
+              node = node.parent;
+            }
+            return false;
+          };
           for (const vr of this.view.visibleRanges) {
             const text = doc.sliceString(vr.from, vr.to);
             TOKEN_RE2.lastIndex = 0;
@@ -290,6 +303,9 @@ var require_cm6 = __commonJS({
               const idxFrom = vr.from + m.index;
               const idxTo = idxFrom + m[0].length;
               if (cursorPos >= idxFrom && cursorPos <= idxTo) {
+                continue;
+              }
+              if (isInsideCode(idxFrom)) {
                 continue;
               }
               const key = m.groups.key;
@@ -442,12 +458,22 @@ module.exports = class DropdownVarsPlugin extends Plugin {
       const file = this.app.vault.getAbstractFileByPath(filePath);
       if (!file) return;
       this.extractDropdownValues(file);
+      const isInsideCodeElement = (node) => {
+        let parent = node.parentElement;
+        while (parent && parent !== root) {
+          const tag = parent.tagName.toLowerCase();
+          if (tag === "code" || tag === "pre") return true;
+          parent = parent.parentElement;
+        }
+        return false;
+      };
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
       const nodes = [];
       let n;
       while (n = walker.nextNode()) {
         const t = n;
         if (!t.nodeValue) continue;
+        if (isInsideCodeElement(t)) continue;
         TOKEN_RE.lastIndex = 0;
         if (TOKEN_RE.test(t.nodeValue)) nodes.push(t);
       }
