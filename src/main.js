@@ -226,6 +226,14 @@ module.exports = class DropdownVarsPlugin extends Plugin {
       const cache = this.app.metadataCache.getFileCache(file);
       if (!cache) return;
 
+      // If inline persistence is enabled, Dataview already reads the inline fields
+      // directly from the document. Injecting into frontmatter cache would create
+      // duplicates (Dataview would see both the inline field AND our injected value).
+      // Only inject if we're NOT using inline fields.
+      if (this.settings.persistInline) {
+        return;
+      }
+
       const content = await this.app.vault.read(file);
       const values = {};
       const fm = cache.frontmatter;

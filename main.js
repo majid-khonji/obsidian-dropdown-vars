@@ -510,6 +510,9 @@ module.exports = class DropdownVarsPlugin extends Plugin {
     try {
       const cache = this.app.metadataCache.getFileCache(file);
       if (!cache) return;
+      if (this.settings.persistInline) {
+        return;
+      }
       const content = await this.app.vault.read(file);
       const values = {};
       const fm = cache.frontmatter;
