@@ -2,6 +2,9 @@
   position: relative;
   display: inline-block;
   font: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
 .dvdd-label {

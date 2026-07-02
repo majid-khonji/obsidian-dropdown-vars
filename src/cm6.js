@@ -38,6 +38,8 @@ class DropdownWidget extends WidgetType {
 
     const root = document.createElement("span");
     root.className = "dvdd";
+    // Prevent mobile keyboard: touchstart fires before mousedown and focuses the editor
+    root.addEventListener("touchstart", (ev) => ev.preventDefault(), { passive: false });
 
     // Live Preview: show 'Status ▾' if persistInline is enabled
     const label = document.createElement("span");
@@ -62,24 +64,24 @@ class DropdownWidget extends WidgetType {
       __dvddOpenMenu = menu;
     };
 
-    label.addEventListener("mousedown", (ev) => {
+    label.addEventListener("pointerdown", (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       if (menu.style.display === "none") openMenu(); else closeMenu();
       // close if clicking elsewhere
       const onDoc = (e) => {
         if (!menu.contains(e.target) && e.target !== label) {
           closeMenu();
-          document.removeEventListener("mousedown", onDoc);
+          document.removeEventListener("pointerdown", onDoc);
         }
       };
-      document.addEventListener("mousedown", onDoc);
+      document.addEventListener("pointerdown", onDoc);
     });
 
     for (const opt of this.options) {
       const item = document.createElement("div");
       item.className = "dvdd-item" + (String(opt) === String(current) ? " active" : "");
       item.textContent = opt;
-      item.addEventListener("mousedown", async (ev) => {
+      item.addEventListener("pointerdown", async (ev) => {
         ev.preventDefault(); ev.stopPropagation();
         await persistSelection(this.plugin, file, this.key, opt, this.tokenPos);
         const showInlineFormat = this.plugin.settings.persistInline;
@@ -95,7 +97,7 @@ class DropdownWidget extends WidgetType {
     return root;
   }
 
-  ignoreEvent() { return false; }
+  ignoreEvent() { return true; }
 }
 
 function dropdownView(plugin) {

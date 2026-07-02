@@ -2,6 +2,10 @@
 
 Easily create interactive dropdowns in your notes and optionally sync their values to Dataview inline fields.
 
+## Demo
+
+![Demo](demo.gif)
+
 ## Features
 - Dropdowns with syntax: `{Status: A | B | ^C}`
 - Click to open and select a value; caret `^` marks the selected option

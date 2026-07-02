@@ -173,6 +173,7 @@ var require_cm6 = __commonJS({
         }
         const root = document.createElement("span");
         root.className = "dvdd";
+        root.addEventListener("touchstart", (ev) => ev.preventDefault(), { passive: false });
         const label = document.createElement("span");
         label.className = "dvdd-label";
         const showInlineFormat = this.plugin.settings.persistInline;
@@ -192,7 +193,7 @@ var require_cm6 = __commonJS({
           menu.style.display = "block";
           __dvddOpenMenu2 = menu;
         };
-        label.addEventListener("mousedown", (ev) => {
+        label.addEventListener("pointerdown", (ev) => {
           ev.preventDefault();
           ev.stopPropagation();
           if (menu.style.display === "none") openMenu();
@@ -200,16 +201,16 @@ var require_cm6 = __commonJS({
           const onDoc = (e) => {
             if (!menu.contains(e.target) && e.target !== label) {
               closeMenu();
-              document.removeEventListener("mousedown", onDoc);
+              document.removeEventListener("pointerdown", onDoc);
             }
           };
-          document.addEventListener("mousedown", onDoc);
+          document.addEventListener("pointerdown", onDoc);
         });
         for (const opt of this.options) {
           const item = document.createElement("div");
           item.className = "dvdd-item" + (String(opt) === String(current) ? " active" : "");
           item.textContent = opt;
-          item.addEventListener("mousedown", async (ev) => {
+          item.addEventListener("pointerdown", async (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
             await persistSelection2(this.plugin, file, this.key, opt, this.tokenPos);
@@ -225,7 +226,7 @@ var require_cm6 = __commonJS({
         return root;
       }
       ignoreEvent() {
-        return false;
+        return true;
       }
     };
     function dropdownView2(plugin) {
